@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>女子ハンドボール大会結果速報</title>
     <style>
+        /* CSSは男子用と同じため省略せずそのまま記述 */
         :root { --line-color: #bdc3c7; --win-color: #e74c3c; --box-width: 190px; }
         body { font-family: "Helvetica Neue", Arial, sans-serif; background: #f4f7f6; margin: 0; padding: 20px; }
         .nav { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
@@ -11,7 +12,7 @@
         .panel { display: none; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         .active { display: block; }
         .tournament-section { display: flex; flex-direction: column; align-items: center; gap: 40px; }
-        .bracket-row { display: flex; gap: 40px; justify-content: center; padding: 20px; background: #fff; min-height: 200px; }
+        .bracket-row { display: flex; gap: 40px; justify-content: center; padding: 20px; background: #fff; min-height: 200px; overflow-x: auto; }
         .round { display: flex; flex-direction: column; justify-content: space-around; gap: 20px; }
         .match-unit { position: relative; display: flex; align-items: center; }
         .box { width: var(--box-width); padding: 10px; border: 2px solid var(--line-color); background: white; text-align: center; border-radius: 6px; font-size: 0.85rem; font-weight: bold; z-index: 2; }
@@ -37,7 +38,7 @@
     <h1 id="viewTitle" style="text-align:center">女子ハンドボール 大会速報</h1>
     <div class="tournament-section">
         <div class="bracket-row" id="mainBracket"></div>
-        <div class="bracket-row" id="playoffBracket" style="margin-top:20px; border-top:1px solid #eee; padding-top:40px;"></div>
+        <div class="bracket-row" id="playoffBracket" style="margin-top:20px; border-top:1px solid #eee; padding-top:40px; flex-wrap: wrap;"></div>
     </div>
 </div>
 
@@ -47,7 +48,7 @@
             <h3>大会構成（女子）</h3>
             <input type="text" id="confTitle" placeholder="大会名を入力" style="width:100%; margin-bottom:10px; padding:8px;">
             <textarea id="teamInput" rows="10" style="width:100%; padding:8px;" placeholder="女子チーム名を1行ずつ入力"></textarea>
-            <button onclick="initTournament()" style="width:100%; margin-top:10px; background:#e67e22; color:white; border:none; padding:10px; border-radius:5px; cursor:pointer;">女子データを保存・初期化</button>
+            <button onclick="initTournament()" style="width:100%; margin-top:10px; background:#e67e22;">女子データを保存・初期化</button>
         </div>
         <div>
             <h3>結果入力</h3>
@@ -69,7 +70,7 @@
 </div>
 
 <script>
-    // 手順1で発行された最新のURL（末尾に女子指定を追加）
+    // URLの末尾に ?type=women を忘れずに
     const API_URL = "https://script.google.com/macros/s/AKfycbywGpe54PtkQRfXNh5qRj4e29yGRmVAxc-fHd4k60lQwxf37kpI6rAgzKKKmOMZsZiwGQ/exec?type=women";
     const ADMIN_PASS = "1234";
     let teams = [];
@@ -106,19 +107,12 @@
         teams = text.split('\n');
         localStorage.setItem('hb_title_women', title);
         localStorage.setItem('hb_teams_women', JSON.stringify(teams));
-
-        const rounds = Math.ceil(Math.log2(teams.length));
-        for(let i=0; i < Math.pow(2, rounds-1); i++){
-            const t1 = teams[i*2] || ""; const t2 = teams[i*2+1] || "";
-            if(isSeed(t1) && !isSeed(t2)) await sendToCloud(`r1-m${i}`, t2, t1, 0,0,0,0);
-            else if(isSeed(t2) && !isSeed(t1)) await sendToCloud(`r1-m${i}`, t1, t2, 0,0,0,0);
-        }
         location.reload();
     }
 
     async function sendToCloud(matchId, win, lose, h1a, h1b, h2a, h2b) {
         const payload = {
-            gender: 'women', // ★ここが女子シートへの書き込み指示になります
+            gender: 'women',
             matchId: matchId, winner: win, loser: lose,
             t1_h1: h1a, t1_h2: h1b, t2_h1: h2a, t2_h2: h2b,
             s1_total: Number(h1a)+Number(h1b), s2_total: Number(h2a)+Number(h2b)
@@ -148,8 +142,13 @@
             main.appendChild(roundDiv);
         }
         
-        play.appendChild(createBox('p-3rd', 99, 0, 0, "3位決定戦"));
-        play.appendChild(createBox('p-5th', 99, 1, 0, "5位決定戦"));
+        play.appendChild(createBox('p-5pre-a', 99, 0, 0, "5位予備選A"));
+        play.appendChild(createBox('p-5pre-b', 99, 1, 0, "5位予備選B"));
+        play.appendChild(createBox('p-3rd', 99, 2, 0, "3位決定戦"));
+        play.appendChild(createBox('p-5th', 99, 3, 0, "5位決定戦"));
+
+        addOption(select, 'p-5pre-a', 0, 0, "5位予備選A（2回戦 敗者）");
+        addOption(select, 'p-5pre-b', 0, 0, "5位予備選B（2回戦 敗者）");
         addOption(select, 'p-3rd', 0, 0, "3位決定戦");
         addOption(select, 'p-5th', 0, 0, "5位決定戦");
     }
@@ -181,7 +180,11 @@
             const rMax = Math.ceil(Math.log2(teams.length));
             return [(cloudData[`r${rMax-1}-m0`]||{}).loser || "準決勝(1)敗者", (cloudData[`r${rMax-1}-m1`]||{}).loser || "準決勝(2)敗者"];
         }
-        if(id === 'p-5th') return [(cloudData['r1-m0']||{}).loser || "1回戦(1)敗者", (cloudData['r1-m1']||{}).loser || "1回戦(2)敗者"];
+        // 女子用：r2(2回戦)の敗者が予備選へ
+        if(id === 'p-5pre-a') return [(cloudData['r2-m0']||{}).loser || "2回戦(1)敗者", (cloudData['r2-m1']||{}).loser || "2回戦(2)敗者"];
+        if(id === 'p-5pre-b') return [(cloudData['r2-m2']||{}).loser || "2回戦(3)敗者", (cloudData['r2-m3']||{}).loser || "2回戦(4)敗者"];
+        if(id === 'p-5th') return [(cloudData['p-5pre-a']||{}).winner || "予備選A勝者", (cloudData['p-5pre-b']||{}).winner || "予備選B勝者"];
+
         const parts = id.split('-'); const r = parseInt(parts[0].substring(1)); const m = parseInt(parts[1].substring(1));
         if(r === 1) return [teams[m*2]||"シード", teams[m*2+1]||"シード"];
         return [(cloudData[`r${r-1}-m${m*2}`]||{}).winner || "未定", (cloudData[`r${r-1}-m${m*2+1}`]||{}).winner || "未定"];
@@ -214,7 +217,7 @@
         location.reload();
     }
 
-    function tryAdmin() { if(prompt("パスワードを入力") === ADMIN_PASS) { document.getElementById('panel-view').classList.remove('active'); document.getElementById('panel-admin').classList.add('active'); } }
+    function tryAdmin() { if(prompt("パスワード") === ADMIN_PASS) { document.getElementById('panel-view').classList.remove('active'); document.getElementById('panel-admin').classList.add('active'); } }
     function showView() { document.getElementById('panel-admin').classList.remove('active'); document.getElementById('panel-view').classList.add('active'); load(); }
 </script>
 </body>
