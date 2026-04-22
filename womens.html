@@ -2,135 +2,76 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>女子ハンドボール大会結果速報</title>
+    <title>女子ハンドボール速報</title>
     <style>
-        /* CSSは男子用と同じため省略せずそのまま記述 */
         :root { --line-color: #bdc3c7; --win-color: #e74c3c; --box-width: 190px; }
-        body { font-family: "Helvetica Neue", Arial, sans-serif; background: #f4f7f6; margin: 0; padding: 20px; }
+        body { font-family: sans-serif; background: #f4f7f6; padding: 20px; }
         .nav { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
         button { cursor: pointer; padding: 10px 20px; border-radius: 20px; border: none; background: #34495e; color: white; font-weight: bold; }
         .panel { display: none; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         .active { display: block; }
-        .tournament-section { display: flex; flex-direction: column; align-items: center; gap: 40px; }
-        .bracket-row { display: flex; gap: 40px; justify-content: center; padding: 20px; background: #fff; min-height: 200px; overflow-x: auto; }
+        .bracket-row { display: flex; gap: 40px; justify-content: center; padding: 20px; overflow-x: auto; }
         .round { display: flex; flex-direction: column; justify-content: space-around; gap: 20px; }
         .match-unit { position: relative; display: flex; align-items: center; }
-        .box { width: var(--box-width); padding: 10px; border: 2px solid var(--line-color); background: white; text-align: center; border-radius: 6px; font-size: 0.85rem; font-weight: bold; z-index: 2; }
+        .box { width: var(--box-width); padding: 10px; border: 2px solid var(--line-color); background: white; text-align: center; border-radius: 6px; font-size: 0.85rem; font-weight: bold; }
         .box.winner-box { border-color: var(--win-color); color: var(--win-color); border-width: 3px; }
-        .box small { display: block; font-size: 0.7rem; color: #95a5a6; margin-bottom: 3px; }
-        .match-unit::after { content: ""; position: absolute; right: -40px; top: 50%; width: 40px; height: 2px; background: var(--line-color); z-index: 1; }
+        .match-unit::after { content: ""; position: absolute; right: -40px; top: 50%; width: 40px; height: 2px; background: var(--line-color); }
         .final-unit::after, .playoff-unit::after { display: none; }
         .win-path::after { background: var(--win-color) !important; height: 4px !important; }
-        .admin-grid { display: grid; grid-template-columns: 1fr 1.5fr; gap: 30px; }
-        .score-card { background: #f9f9f9; padding: 15px; border-radius: 10px; border: 1px solid #ddd; margin-top: 10px; }
-        input[type="number"] { width: 50px; padding: 5px; margin: 0 5px; }
-        .team-option { display: flex; align-items: center; gap: 10px; padding: 8px; background: white; border: 1px solid #ddd; border-radius: 5px; cursor: pointer; margin-top: 5px; }
+        input[type="number"] { width: 50px; }
     </style>
 </head>
 <body>
 
 <div class="nav">
     <button onclick="showView()">掲示板を表示</button>
-    <button onclick="tryAdmin()" style="background:#7f8c8d;">管理画面（女子）</button>
+    <button onclick="tryAdmin()" style="background:#7f8c8d;">管理（女子）</button>
 </div>
 
 <div id="panel-view" class="panel active">
-    <h1 id="viewTitle" style="text-align:center">女子ハンドボール 大会速報</h1>
-    <div class="tournament-section">
-        <div class="bracket-row" id="mainBracket"></div>
-        <div class="bracket-row" id="playoffBracket" style="margin-top:20px; border-top:1px solid #eee; padding-top:40px; flex-wrap: wrap;"></div>
-    </div>
+    <h1 id="viewTitle" style="text-align:center">読み込み中...</h1>
+    <div class="bracket-row" id="mainBracket"></div>
+    <div class="bracket-row" id="playoffBracket" style="border-top:1px solid #ddd; padding-top:20px;"></div>
 </div>
 
 <div id="panel-admin" class="panel">
-    <div class="admin-grid">
-        <div>
-            <h3>大会構成（女子）</h3>
-            <input type="text" id="confTitle" placeholder="大会名を入力" style="width:100%; margin-bottom:10px; padding:8px;">
-            <textarea id="teamInput" rows="10" style="width:100%; padding:8px;" placeholder="女子チーム名を1行ずつ入力"></textarea>
-            <button onclick="initTournament()" style="width:100%; margin-top:10px; background:#e67e22;">女子データを保存・初期化</button>
-        </div>
-        <div>
-            <h3>結果入力</h3>
-            <select id="matchSelect" onchange="onMatchChange()" style="width:100%; padding:10px;"></select>
-            <div id="scoreArea" style="display:none;" class="score-card">
-                <div id="inputT1">
-                    <b id="nameT1"></b>: 前 <input type="number" id="t1h1"> 後 <input type="number" id="t1h2">
-                </div>
-                <div id="inputT2" style="margin-top:10px;">
-                    <b id="nameT2"></b>: 前 <input type="number" id="t2h1"> 後 <input type="number" id="t2h2">
-                </div>
-                <p style="font-size:0.8rem; margin-top:15px;">勝者を選択してください：</p>
-                <label class="team-option"><input type="radio" name="winner" id="winT1"> <span id="labelT1"></span></label>
-                <label class="team-option"><input type="radio" name="winner" id="winT2"> <span id="labelT2"></span></label>
-                <button onclick="submitScore()" id="btnSubmit" style="width:100%; margin-top:15px; background:#27ae60; padding:10px; color:white; border:none; border-radius:5px;">女子スプレッドシートに送信</button>
-            </div>
-        </div>
+    <h3>女子 結果入力</h3>
+    <select id="matchSelect" onchange="onMatchChange()" style="width:100%; padding:10px;"></select>
+    <div id="scoreArea" style="display:none; margin-top:20px;">
+        <div id="nameT1"></div> <input type="number" id="t1h1"> + <input type="number" id="t1h2"><br>
+        <div id="nameT2" style="margin-top:10px;"></div> <input type="number" id="t2h1"> + <input type="number" id="t2h2">
+        <p>勝者：<input type="radio" name="winner" id="winT1"> <span id="labelT1"></span>
+        <input type="radio" name="winner" id="winT2"> <span id="labelT2"></span></p>
+        <button onclick="submitScore()" id="btnSubmit" style="background:#27ae60; width:100%; padding:10px; color:white;">女子スコア送信</button>
     </div>
 </div>
 
 <script>
-    // URLの末尾に ?type=women を忘れずに
-    const API_URL = "https://script.google.com/macros/s/AKfycbywGpe54PtkQRfXNh5qRj4e29yGRmVAxc-fHd4k60lQwxf37kpI6rAgzKKKmOMZsZiwGQ/exec?type=women";
+    // type=women を追加
+    const API_URL = "https://script.google.com/macros/s/AKfycbx26_yE16jbKLM53o785jPfaTTkkmdR6OMtUwLKigX0Z0WgzxV5QRNywIs8Mh4YyUeT/exec?type=women";
     const ADMIN_PASS = "1234";
     let teams = [];
     let cloudData = {};
 
     window.onload = load;
-
-    async function load() {
-        const savedTitle = localStorage.getItem('hb_title_women');
-        const savedTeams = localStorage.getItem('hb_teams_women');
-        if(savedTitle) document.getElementById('viewTitle').innerText = savedTitle;
-        if(savedTeams) {
-            teams = JSON.parse(savedTeams);
-            document.getElementById('teamInput').value = teams.join('\n');
-            document.getElementById('confTitle').value = savedTitle;
-            await syncCloudData();
-            renderAll();
-        }
-    }
-
+    async function load() { await syncCloudData(); renderAll(); }
     async function syncCloudData() {
-        try {
-            const response = await fetch(API_URL);
-            cloudData = await response.json();
-        } catch (e) { console.error("Cloud Sync Error", e); }
+        const res = await fetch(API_URL);
+        const json = await res.json();
+        cloudData = json.scores; teams = json.teams;
+        document.getElementById('viewTitle').innerText = json.title;
     }
 
-    function isSeed(name) { return !name || name === "シード" || name === "BYE" || name === ""; }
-
-    async function initTournament() {
-        if(!confirm("女子のデータを初期化しますか？")) return;
-        const title = document.getElementById('confTitle').value;
-        const text = document.getElementById('teamInput').value.trim();
-        teams = text.split('\n');
-        localStorage.setItem('hb_title_women', title);
-        localStorage.setItem('hb_teams_women', JSON.stringify(teams));
-        location.reload();
-    }
-
-    async function sendToCloud(matchId, win, lose, h1a, h1b, h2a, h2b) {
-        const payload = {
-            gender: 'women',
-            matchId: matchId, winner: win, loser: lose,
-            t1_h1: h1a, t1_h2: h1b, t2_h1: h2a, t2_h2: h2b,
-            s1_total: Number(h1a)+Number(h1b), s2_total: Number(h2a)+Number(h2b)
-        };
-        await fetch(API_URL, { method: "POST", body: JSON.stringify(payload) });
-    }
+    function isSeed(name) { return !name || name === "シード" || name === "BYE"; }
 
     function renderAll() {
-        const main = document.getElementById('mainBracket');
-        const play = document.getElementById('playoffBracket');
-        main.innerHTML = ''; play.innerHTML = '';
-        const select = document.getElementById('matchSelect');
-        select.innerHTML = '<option value="">試合を選択...</option>';
+        const main = document.getElementById('mainBracket'); main.innerHTML = '';
+        const play = document.getElementById('playoffBracket'); play.innerHTML = '';
+        const select = document.getElementById('matchSelect'); select.innerHTML = '<option value="">試合を選択...</option>';
 
         const rounds = Math.ceil(Math.log2(teams.length));
         for(let r=0; r <= rounds; r++) {
-            const roundDiv = document.createElement('div');
-            roundDiv.className = 'round';
+            const roundDiv = document.createElement('div'); roundDiv.className = 'round';
             const count = Math.pow(2, rounds-r);
             for(let i=0; i < count; i++) {
                 const id = `r${r}-m${i}`;
@@ -141,22 +82,17 @@
             }
             main.appendChild(roundDiv);
         }
-        
         play.appendChild(createBox('p-5pre-a', 99, 0, 0, "5位予備選A"));
         play.appendChild(createBox('p-5pre-b', 99, 1, 0, "5位予備選B"));
         play.appendChild(createBox('p-3rd', 99, 2, 0, "3位決定戦"));
         play.appendChild(createBox('p-5th', 99, 3, 0, "5位決定戦"));
-
-        addOption(select, 'p-5pre-a', 0, 0, "5位予備選A（2回戦 敗者）");
-        addOption(select, 'p-5pre-b', 0, 0, "5位予備選B（2回戦 敗者）");
-        addOption(select, 'p-3rd', 0, 0, "3位決定戦");
-        addOption(select, 'p-5th', 0, 0, "5位決定戦");
+        addOption(select, 'p-5pre-a', 0, 0, "5位予備選A"); addOption(select, 'p-5pre-b', 0, 0, "5位予備選B");
+        addOption(select, 'p-3rd', 0, 0, "3位決定戦"); addOption(select, 'p-5th', 0, 0, "5位決定戦");
     }
 
     function createBox(id, r, i, maxR, label="") {
-        const unit = document.createElement('div');
-        unit.className = 'match-unit' + (r === maxR ? ' final-unit' : '') + (r === 99 ? ' playoff-unit' : '');
-        const box = document.createElement('div'); box.className = 'box'; box.id = id;
+        const unit = document.createElement('div'); unit.className = 'match-unit' + (r === maxR ? ' final-unit' : '') + (r === 99 ? ' playoff-unit' : '');
+        const box = document.createElement('div'); box.className = 'box';
         const data = cloudData[id] || {};
         if(r === 0) { box.innerText = teams[i] || ""; } 
         else {
@@ -169,8 +105,7 @@
 
     function addOption(sel, id, r, i, label="") {
         const pair = getTeamNames(id);
-        const opt = document.createElement('option');
-        opt.value = id;
+        const opt = document.createElement('option'); opt.value = id;
         opt.innerText = label || `${r}回戦 第${i+1}試合 (${pair[0]} vs ${pair[1]})`;
         sel.appendChild(opt);
     }
@@ -180,19 +115,17 @@
             const rMax = Math.ceil(Math.log2(teams.length));
             return [(cloudData[`r${rMax-1}-m0`]||{}).loser || "準決勝(1)敗者", (cloudData[`r${rMax-1}-m1`]||{}).loser || "準決勝(2)敗者"];
         }
-        // 女子用：r2(2回戦)の敗者が予備選へ
+        // 女子：2回戦(r2)の敗者が予備選へ
         if(id === 'p-5pre-a') return [(cloudData['r2-m0']||{}).loser || "2回戦(1)敗者", (cloudData['r2-m1']||{}).loser || "2回戦(2)敗者"];
         if(id === 'p-5pre-b') return [(cloudData['r2-m2']||{}).loser || "2回戦(3)敗者", (cloudData['r2-m3']||{}).loser || "2回戦(4)敗者"];
         if(id === 'p-5th') return [(cloudData['p-5pre-a']||{}).winner || "予備選A勝者", (cloudData['p-5pre-b']||{}).winner || "予備選B勝者"];
-
         const parts = id.split('-'); const r = parseInt(parts[0].substring(1)); const m = parseInt(parts[1].substring(1));
         if(r === 1) return [teams[m*2]||"シード", teams[m*2+1]||"シード"];
         return [(cloudData[`r${r-1}-m${m*2}`]||{}).winner || "未定", (cloudData[`r${r-1}-m${m*2+1}`]||{}).winner || "未定"];
     }
 
     function onMatchChange() {
-        const id = document.getElementById('matchSelect').value;
-        if(!id) return;
+        const id = document.getElementById('matchSelect').value; if(!id) return;
         const pair = getTeamNames(id);
         document.getElementById('scoreArea').style.display = 'block';
         document.getElementById('nameT1').innerText = document.getElementById('labelT1').innerText = pair[0];
@@ -200,25 +133,23 @@
     }
 
     async function submitScore() {
-        const id = document.getElementById('matchSelect').value;
-        const pair = getTeamNames(id);
-        const btn = document.getElementById('btnSubmit');
-        btn.innerText = "送信中..."; btn.disabled = true;
-
+        const id = document.getElementById('matchSelect').value; const pair = getTeamNames(id);
         let win, lose;
         if(document.getElementById('winT1').checked) { win = pair[0]; lose = pair[1]; }
         else if(document.getElementById('winT2').checked) { win = pair[1]; lose = pair[0]; }
-        else { alert("勝者を選択してください"); btn.innerText = "女子スプレッドシートに送信"; btn.disabled = false; return; }
-
-        await sendToCloud(id, win, lose, 
-            document.getElementById('t1h1').value || 0, document.getElementById('t1h2').value || 0,
-            document.getElementById('t2h1').value || 0, document.getElementById('t2h2').value || 0
-        );
+        else return alert("勝者を選択");
+        
+        await fetch(API_URL, { method: "POST", body: JSON.stringify({
+            gender: 'women', matchId: id, winner: win, loser: lose,
+            s1_total: Number(document.getElementById('t1h1').value)+Number(document.getElementById('t1h2').value),
+            s2_total: Number(document.getElementById('t2h1').value)+Number(document.getElementById('t2h2').value),
+            t1_h1: document.getElementById('t1h1').value, t1_h2: document.getElementById('t1h2').value,
+            t2_h1: document.getElementById('t2h1').value, t2_h2: document.getElementById('t2h2').value
+        })});
         location.reload();
     }
-
     function tryAdmin() { if(prompt("パスワード") === ADMIN_PASS) { document.getElementById('panel-view').classList.remove('active'); document.getElementById('panel-admin').classList.add('active'); } }
-    function showView() { document.getElementById('panel-admin').classList.remove('active'); document.getElementById('panel-view').classList.add('active'); load(); }
+    function showView() { location.reload(); }
 </script>
 </body>
 </html>
